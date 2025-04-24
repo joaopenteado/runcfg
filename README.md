@@ -38,7 +38,7 @@ func main() {
     }
 
     // Access configuration values
-    fmt.Printf("Service name: %s\n", cfg.ServiceName)
+    fmt.Printf("Service name: %s\n", cfg.Name)
     fmt.Printf("Port: %d\n", cfg.Port)
     fmt.Printf("Project ID: %s\n", cfg.ProjectID)
 }
@@ -67,7 +67,7 @@ func main() {
     }
 
     // Access configuration values
-    fmt.Printf("Job name: %s\n", cfg.JobName)
+    fmt.Printf("Job name: %s\n", cfg.Name)
     fmt.Printf("Task index: %d\n", cfg.TaskIndex)
     fmt.Printf("Project ID: %s\n", cfg.ProjectID)
 }

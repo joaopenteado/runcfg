@@ -15,13 +15,13 @@ type Job struct {
 	// Metadata contains information from the instance metadata server.
 	Metadata
 
-	// JobName is the name of the Cloud Run job being run.
+	// Name is the name of the Cloud Run job being run.
 	// Read from `CLOUD_RUN_JOB` environment variable.
-	JobName string
+	Name string
 
-	// ExecutionName is the name of the Cloud Run execution being run.
+	// Execution is the name of the Cloud Run execution being run.
 	// Read from `CLOUD_RUN_EXECUTION` environment variable.
-	ExecutionName string
+	Execution string
 
 	// TaskIndex is the index of this task.
 	// Starts at 0 for the first task and increments by 1 for every
@@ -54,8 +54,8 @@ type Job struct {
 // fails, or ErrMetadataFetch if metadata server requests fail.
 func LoadJob(ctx context.Context, opts ...LoadOption) (*Job, error) {
 	cfg := Job{
-		JobName:       os.Getenv("CLOUD_RUN_JOB"),
-		ExecutionName: os.Getenv("CLOUD_RUN_EXECUTION"),
+		Name:      os.Getenv("CLOUD_RUN_JOB"),
+		Execution: os.Getenv("CLOUD_RUN_EXECUTION"),
 	}
 
 	if taskIdx := os.Getenv("CLOUD_RUN_TASK_INDEX"); taskIdx != "" {

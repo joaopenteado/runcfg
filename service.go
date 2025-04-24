@@ -23,15 +23,15 @@ type Service struct {
 
 	// The name of the Cloud Run service being run.
 	// Read from `K_SERVICE` environment variable.
-	ServiceName string
+	Name string
 
 	// The name of the Cloud Run revision being run.
 	// Read from `K_REVISION` environment variable.
-	ServiceRevision string
+	Revision string
 
 	// The name of the Cloud Run configuration that created the revision.
 	// Read from `K_CONFIGURATION` environment variable.
-	ServiceConfiguration string
+	Configuration string
 }
 
 // LoadService loads configuration for a Cloud Run service, including both
@@ -46,9 +46,9 @@ type Service struct {
 // processing fails, or ErrMetadataFetch if metadata server requests fail.
 func LoadService(ctx context.Context, opts ...LoadOption) (*Service, error) {
 	cfg := Service{
-		ServiceName:          os.Getenv("K_SERVICE"),
-		ServiceRevision:      os.Getenv("K_REVISION"),
-		ServiceConfiguration: os.Getenv("K_CONFIGURATION"),
+		Name:          os.Getenv("K_SERVICE"),
+		Revision:      os.Getenv("K_REVISION"),
+		Configuration: os.Getenv("K_CONFIGURATION"),
 	}
 	if portStr := os.Getenv("PORT"); portStr != "" {
 		port, err := strconv.ParseUint(portStr, 10, 16)
