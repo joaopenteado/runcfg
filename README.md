@@ -1,2 +1,2 @@
-# cloud-run-config
+# runcfg
 Generic and extensible configuration loader for Go Cloud Run services and jobs.
