@@ -1,5 +1,7 @@
 # runcfg
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/joaopenteado/runcfg.svg)](https://pkg.go.dev/github.com/joaopenteado/runcfg)
+
 A Go package for loading configuration in Google Cloud Run services and jobs.
 This package provides a simple and type-safe way to access environment variables
 and metadata server information in Cloud Run environments.
@@ -16,7 +18,7 @@ and metadata server information in Cloud Run environments.
 ## Installation
 
 ```bash
-go get github.com/joaopenteado/runcfg
+go get -u github.com/joaopenteado/runcfg
 ```
 
 ## Usage
