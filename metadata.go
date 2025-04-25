@@ -43,34 +43,34 @@ var (
 	// variables that will be checked in order. The first non-empty value found
 	// will be used to override the project ID retrieved from the metadata
 	// server.
-	EnvProjectID any = []string{"CLOUDSDK_CORE_PROJECT", "GOOGLE_CLOUD_PROJECT", "GCP_PROJECT_ID"}
+	EnvProjectID = []string{"CLOUDSDK_CORE_PROJECT", "GOOGLE_CLOUD_PROJECT", "GCP_PROJECT_ID"}
 
 	// EnvProjectNumber specifies environment variables for the project number.
 	// This can be a single environment variable name or a list of fallback
 	// variables that will be checked in order. The first non-empty value found
 	// will be used to override the project number retrieved from the metadata
 	// server.
-	EnvProjectNumber any = "GCP_PROJECT_NUMBER"
+	EnvProjectNumber = "GCP_PROJECT_NUMBER"
 
 	// EnvRegion specifies environment variables for the Cloud Run region.
 	// This can be a single environment variable name or a list of fallback
 	// variables that will be checked in order. The first non-empty value found
 	// will be used to override the region retrieved from the metadata server.
-	EnvRegion any = []string{"CLOUDSDK_COMPUTE_REGION", "GCP_REGION"}
+	EnvRegion = []string{"CLOUDSDK_COMPUTE_REGION", "GCP_REGION"}
 
 	// EnvInstanceID specifies environment variables for the instance ID.
 	// This can be a single environment variable name or a list of fallback
 	// variables that will be checked in order. The first non-empty value found
 	// will be used to override the instance ID retrieved from the metadata
 	// server.
-	EnvInstanceID any = "CLOUD_RUN_INSTANCE_ID"
+	EnvInstanceID = "CLOUD_RUN_INSTANCE_ID"
 
 	// EnvServiceAccountEmail specifies environment variables for the service
 	// account email. This can be a single environment variable name or a list
 	// of fallback variables that will be checked in order. The first non-empty
 	// value found will be used to override the service account email retrieved
 	// from the metadata server.
-	EnvServiceAccountEmail any = "GOOGLE_SERVICE_ACCOUNT_EMAIL"
+	EnvServiceAccountEmail = "GOOGLE_SERVICE_ACCOUNT_EMAIL"
 )
 
 // getEnv retrieves environment variable values from a string or []string.
@@ -78,23 +78,19 @@ var (
 // For a []string input, it checks each environment variable in order and
 // returns the first non-empty value found. If no value is found, returns
 // an empty string.
-// Returns ErrInvalidEnvironmentVariableType if the input type is not string or
-// []string.
-func getEnv(env any) (string, error) {
-	switch v := env.(type) {
-	case string:
-		return os.Getenv(v), nil
-	case []string:
-		for _, e := range v {
-			val := os.Getenv(e)
-			if val != "" {
-				return val, nil
-			}
-		}
-		return "", nil
-	default:
-		return "", fmt.Errorf("%w: %T", ErrInvalidEnvironmentVariableType, v)
+func getEnv[T string | []string](key T) string {
+	if v, ok := any(key).(string); ok {
+		return os.Getenv(v)
 	}
+
+	for _, v := range any(key).([]string) {
+		val := os.Getenv(v)
+		if val != "" {
+			return val
+		}
+	}
+
+	return ""
 }
 
 // Metadata contains information from the instance metadata server.
@@ -126,26 +122,11 @@ type Metadata struct {
 // to fetch from the metadata server - if a field is not requested and not set
 // via environment variables, it will remain empty in the returned struct.
 func LoadMetadata(ctx context.Context, metadataFields MetadataField) (*Metadata, error) {
-	projectID, err := getEnv(EnvProjectID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read EnvProjectID: %w", err)
-	}
-	projectNumber, err := getEnv(EnvProjectNumber)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read EnvProjectNumber: %w", err)
-	}
-	region, err := getEnv(EnvRegion)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read EnvRegion: %w", err)
-	}
-	instanceID, err := getEnv(EnvInstanceID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read EnvInstanceID: %w", err)
-	}
-	serviceAccountEmail, err := getEnv(EnvServiceAccountEmail)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read EnvServiceAccountEmail: %w", err)
-	}
+	projectID := getEnv(EnvProjectID)
+	projectNumber := getEnv(EnvProjectNumber)
+	region := getEnv(EnvRegion)
+	instanceID := getEnv(EnvInstanceID)
+	serviceAccountEmail := getEnv(EnvServiceAccountEmail)
 
 	cfg := Metadata{
 		ProjectID:           projectID,

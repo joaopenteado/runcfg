@@ -121,7 +121,6 @@ are based on.
 
 ```go
 var (
-    ErrInvalidEnvironmentVariableType = errors.New("invalid environment variable type")
     ErrEnvironmentProcess = errors.New("failed to process configuration from environment variables")
     ErrMetadataFetch = errors.New("failed to fetch metadata from server")
 )
