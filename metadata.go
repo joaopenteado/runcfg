@@ -136,7 +136,8 @@ func LoadMetadata(ctx context.Context, metadataFields MetadataField) (*Metadata,
 		ServiceAccountEmail: serviceAccountEmail,
 	}
 
-	var g errgroup.Group
+	g, ctx := errgroup.WithContext(ctx)
+
 	if cfg.ProjectID == "" && metadataFields&MetadataProjectID != 0 {
 		g.Go(func() error {
 			projectID, err := metadata.ProjectIDWithContext(ctx)
