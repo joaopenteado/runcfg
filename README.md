@@ -106,12 +106,11 @@ The following environment variables are supported by default:
 - Service Account Email: `GOOGLE_SERVICE_ACCOUNT_EMAIL`
 
 You can customize which environment variables are checked by modifying the
-`Env*` package variables. Each variable can be set to either a single
-environment variable name (string) or a list of fallback variables ([]string)
-that will be checked in order until a non-empty value is found. If no non-empty
-environment variables are found and the loader is configured to fetch the
-corresponding metadata field, the value will be fetched from the metadata
-server.
+`Env*` package variables. Each variable can be set to a list of fallback
+variables ([]string) that will be checked in order until a non-empty value is
+found. If no non-empty environment variables are found and the loader is
+configured to fetch the corresponding metadata field, the value will be fetched
+from the metadata server.
 
 
 ## Error Handling
