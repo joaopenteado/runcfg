@@ -38,54 +38,38 @@ const (
 )
 
 var (
-	// EnvProjectID specifies environment variables for the project ID.
-	// This can be a single environment variable name or a list of fallback
-	// variables that will be checked in order. The first non-empty value found
-	// will be used to override the project ID retrieved from the metadata
-	// server.
+	// EnvProjectID is a list of environment variable names that can override
+	// the project ID from the metadata server. Variables are checked in order,
+	// with the first non-empty value taking precedence.
 	EnvProjectID = []string{"CLOUDSDK_CORE_PROJECT", "GOOGLE_CLOUD_PROJECT", "GCP_PROJECT_ID"}
 
-	// EnvProjectNumber specifies environment variables for the project number.
-	// This can be a single environment variable name or a list of fallback
-	// variables that will be checked in order. The first non-empty value found
-	// will be used to override the project number retrieved from the metadata
-	// server.
-	EnvProjectNumber = "GCP_PROJECT_NUMBER"
+	// EnvProjectNumber is a list of environment variable names that can
+	// override the project number from the metadata server. Variables are
+	// checked in order, with the first non-empty value taking precedence.
+	EnvProjectNumber = []string{"GCP_PROJECT_NUMBER"}
 
-	// EnvRegion specifies environment variables for the Cloud Run region.
-	// This can be a single environment variable name or a list of fallback
-	// variables that will be checked in order. The first non-empty value found
-	// will be used to override the region retrieved from the metadata server.
+	// EnvRegion is a list of environment variable names that can override
+	// the region from the metadata server. Variables are checked in order,
+	// with the first non-empty value taking precedence.
 	EnvRegion = []string{"CLOUDSDK_COMPUTE_REGION", "GCP_REGION"}
 
-	// EnvInstanceID specifies environment variables for the instance ID.
-	// This can be a single environment variable name or a list of fallback
-	// variables that will be checked in order. The first non-empty value found
-	// will be used to override the instance ID retrieved from the metadata
-	// server.
-	EnvInstanceID = "CLOUD_RUN_INSTANCE_ID"
+	// EnvInstanceID is a list of environment variable names that can override
+	// the instance ID from the metadata server. Variables are checked in order,
+	// with the first non-empty value taking precedence.
+	EnvInstanceID = []string{"CLOUD_RUN_INSTANCE_ID"}
 
-	// EnvServiceAccountEmail specifies environment variables for the service
-	// account email. This can be a single environment variable name or a list
-	// of fallback variables that will be checked in order. The first non-empty
-	// value found will be used to override the service account email retrieved
-	// from the metadata server.
-	EnvServiceAccountEmail = "GOOGLE_SERVICE_ACCOUNT_EMAIL"
+	// EnvServiceAccountEmail is a list of environment variable names that can
+	// override the service account email from the metadata server. Variables
+	// are checked in order, with the first non-empty value taking precedence.
+	EnvServiceAccountEmail = []string{"GOOGLE_SERVICE_ACCOUNT_EMAIL"}
 )
 
-// getEnv retrieves environment variable values from a string or []string.
-// For a string input, it returns the value of that environment variable.
-// For a []string input, it checks each environment variable in order and
-// returns the first non-empty value found. If no value is found, returns
-// an empty string.
-func getEnv[T string | []string](key T) string {
-	if v, ok := any(key).(string); ok {
-		return os.Getenv(v)
-	}
-
-	for _, v := range any(key).([]string) {
-		val := os.Getenv(v)
-		if val != "" {
+// getEnv retrieves environment variable values from a list of environment
+// variable names. It checks each environment variable in order and returns the
+// first non-empty value found. If no value is found, returns an empty string.
+func getEnv(key []string) string {
+	for _, v := range key {
+		if val := os.Getenv(v); val != "" {
 			return val
 		}
 	}
@@ -122,18 +106,12 @@ type Metadata struct {
 // to fetch from the metadata server - if a field is not requested and not set
 // via environment variables, it will remain empty in the returned struct.
 func LoadMetadata(ctx context.Context, metadataFields MetadataField) (*Metadata, error) {
-	projectID := getEnv(EnvProjectID)
-	projectNumber := getEnv(EnvProjectNumber)
-	region := getEnv(EnvRegion)
-	instanceID := getEnv(EnvInstanceID)
-	serviceAccountEmail := getEnv(EnvServiceAccountEmail)
-
 	cfg := Metadata{
-		ProjectID:           projectID,
-		ProjectNumber:       projectNumber,
-		Region:              region,
-		InstanceID:          instanceID,
-		ServiceAccountEmail: serviceAccountEmail,
+		ProjectID:           getEnv(EnvProjectID),
+		ProjectNumber:       getEnv(EnvProjectNumber),
+		Region:              getEnv(EnvRegion),
+		InstanceID:          getEnv(EnvInstanceID),
+		ServiceAccountEmail: getEnv(EnvServiceAccountEmail),
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
