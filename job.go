@@ -1,20 +1,87 @@
 package runcfg
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"os"
 	"strconv"
 )
 
-// Job contains environment variables and metadata available to Cloud Run jobs.
+type jobLoadOptions struct {
+	defaultName        string
+	defaultExecution   string
+	defaultTaskIndex   uint
+	defaultTaskAttempt uint
+	defaultTaskCount   uint
+}
+
+func defaultJobLoadOptions() jobLoadOptions {
+	return jobLoadOptions{
+		defaultName:        "",
+		defaultExecution:   "",
+		defaultTaskIndex:   0,
+		defaultTaskAttempt: 0,
+		defaultTaskCount:   1,
+	}
+}
+
+type JobLoadOption func(*jobLoadOptions)
+
+// WithDefaultJobName specifies the default name to use if the CLOUD_RUN_JOB
+// environment variable is not set. If multiple names are provided, the first
+// non-empty name will be used.
+func WithDefaultJobName(names ...string) JobLoadOption {
+	return func(o *jobLoadOptions) {
+		for _, name := range names {
+			if name != "" {
+				o.defaultName = name
+				break
+			}
+		}
+	}
+}
+
+// WithDefaultExecution specifies the default execution name to use if the
+// CLOUD_RUN_EXECUTION environment variable is not set. If multiple execution
+// names are provided, the first non-empty execution name will be used.
+func WithDefaultExecution(executions ...string) JobLoadOption {
+	return func(o *jobLoadOptions) {
+		for _, execution := range executions {
+			if execution != "" {
+				o.defaultExecution = execution
+				break
+			}
+		}
+	}
+}
+
+// WithDefaultTaskIndex specifies the default task index to use if the
+// CLOUD_RUN_TASK_INDEX environment variable is not set.
+func WithDefaultTaskIndex(taskIndex uint) JobLoadOption {
+	return func(o *jobLoadOptions) {
+		o.defaultTaskIndex = taskIndex
+	}
+}
+
+// WithDefaultTaskAttempt specifies the default task attempt to use if the
+// CLOUD_RUN_TASK_ATTEMPT environment variable is not set.
+func WithDefaultTaskAttempt(taskAttempt uint) JobLoadOption {
+	return func(o *jobLoadOptions) {
+		o.defaultTaskAttempt = taskAttempt
+	}
+}
+
+// WithDefaultTaskCount specifies the default task count to use if the
+// CLOUD_RUN_TASK_COUNT environment variable is not set.
+func WithDefaultTaskCount(taskCount uint) JobLoadOption {
+	return func(o *jobLoadOptions) {
+		o.defaultTaskCount = taskCount
+	}
+}
+
+// Job contains environment variables available to Cloud Run jobs.
 // For more details see:
 // https://cloud.google.com/run/docs/container-contract#services-env-vars
 type Job struct {
-	// Metadata contains information from the instance metadata server.
-	Metadata
-
 	// Name is the name of the Cloud Run job being run.
 	// Read from `CLOUD_RUN_JOB` environment variable.
 	Name string
@@ -43,55 +110,56 @@ type Job struct {
 	TaskCount uint
 }
 
-// LoadJob loads configuration for a Cloud Run job, including both environment
-// variables and metadata from the metadata server. It returns a Job containing
-// the loaded configuration or an error if the loading process fails.
-//
-// The ctx parameter is used for metadata server requests. The opts parameter
-// allows specifying options to configure the loading process.
-//
-// LoadJob will return ErrEnvironmentProcess if environment variable processing
-// fails, or ErrMetadataFetch if metadata server requests fail.
-func LoadJob(ctx context.Context, opts ...LoadOption) (*Job, error) {
+// LoadJob loads configuration for a Cloud Run job from environment variables.
+// It returns a Job containing the loaded configuration or ErrEnvironmentProcess
+// if environment variable processing fails.
+func LoadJob(opts ...JobLoadOption) (*Job, error) {
+	loadOpts := defaultJobLoadOptions()
+	for _, opt := range opts {
+		opt(&loadOpts)
+	}
+
 	cfg := Job{
 		Name:      os.Getenv("CLOUD_RUN_JOB"),
 		Execution: os.Getenv("CLOUD_RUN_EXECUTION"),
 	}
 
+	if cfg.Name == "" {
+		cfg.Name = loadOpts.defaultName
+	}
+	if cfg.Execution == "" {
+		cfg.Execution = loadOpts.defaultExecution
+	}
+
 	if taskIdx := os.Getenv("CLOUD_RUN_TASK_INDEX"); taskIdx != "" {
 		idx, err := strconv.ParseUint(taskIdx, 10, 32)
 		if err != nil {
-			return nil, errors.Join(ErrEnvironmentProcess, fmt.Errorf("invalid CLOUD_RUN_TASK_INDEX value: %w", err))
+			return nil, errors.Join(ErrEnvironmentProcess, errors.New("invalid CLOUD_RUN_TASK_INDEX value"), err)
 		}
 		cfg.TaskIndex = uint(idx)
+	} else {
+		cfg.TaskIndex = loadOpts.defaultTaskIndex
 	}
 
 	if taskAttempt := os.Getenv("CLOUD_RUN_TASK_ATTEMPT"); taskAttempt != "" {
 		attempt, err := strconv.ParseUint(taskAttempt, 10, 32)
 		if err != nil {
-			return nil, errors.Join(ErrEnvironmentProcess, fmt.Errorf("invalid CLOUD_RUN_TASK_ATTEMPT value: %w", err))
+			return nil, errors.Join(ErrEnvironmentProcess, errors.New("invalid CLOUD_RUN_TASK_ATTEMPT value"), err)
 		}
 		cfg.TaskAttempt = uint(attempt)
+	} else {
+		cfg.TaskAttempt = loadOpts.defaultTaskAttempt
 	}
 
 	if taskCount := os.Getenv("CLOUD_RUN_TASK_COUNT"); taskCount != "" {
 		count, err := strconv.ParseUint(taskCount, 10, 32)
 		if err != nil {
-			return nil, errors.Join(ErrEnvironmentProcess, fmt.Errorf("invalid CLOUD_RUN_TASK_COUNT value: %w", err))
+			return nil, errors.Join(ErrEnvironmentProcess, errors.New("invalid CLOUD_RUN_TASK_COUNT value"), err)
 		}
 		cfg.TaskCount = uint(count)
+	} else {
+		cfg.TaskCount = loadOpts.defaultTaskCount
 	}
 
-	loadOpts := defaultOptions()
-	for _, opt := range opts {
-		opt(&loadOpts)
-	}
-
-	metadata, err := LoadMetadata(ctx, loadOpts.requiredMetadata)
-	if err != nil {
-		return nil, errors.Join(ErrMetadataFetch, err)
-	}
-
-	cfg.Metadata = *metadata
 	return &cfg, nil
 }
