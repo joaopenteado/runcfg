@@ -114,52 +114,58 @@ type Job struct {
 // It returns a Job containing the loaded configuration or ErrEnvironmentProcess
 // if environment variable processing fails.
 func LoadJob(opts ...JobLoadOption) (*Job, error) {
+	j := &Job{}
+	return j, j.Reload(opts...)
+}
+
+// Reload reloads the configuration for a Cloud Run job from environment
+// variables. It returns ErrEnvironmentProcess if environment variable
+// processing fails.
+func (j *Job) Reload(opts ...JobLoadOption) error {
 	loadOpts := defaultJobLoadOptions()
 	for _, opt := range opts {
 		opt(&loadOpts)
 	}
 
-	cfg := Job{
-		Name:      os.Getenv("CLOUD_RUN_JOB"),
-		Execution: os.Getenv("CLOUD_RUN_EXECUTION"),
-	}
+	j.Name = os.Getenv("CLOUD_RUN_JOB")
+	j.Execution = os.Getenv("CLOUD_RUN_EXECUTION")
 
-	if cfg.Name == "" {
-		cfg.Name = loadOpts.defaultName
+	if j.Name == "" {
+		j.Name = loadOpts.defaultName
 	}
-	if cfg.Execution == "" {
-		cfg.Execution = loadOpts.defaultExecution
+	if j.Execution == "" {
+		j.Execution = loadOpts.defaultExecution
 	}
 
 	if taskIdx := os.Getenv("CLOUD_RUN_TASK_INDEX"); taskIdx != "" {
 		idx, err := strconv.ParseUint(taskIdx, 10, 32)
 		if err != nil {
-			return nil, errors.Join(ErrEnvironmentProcess, errors.New("invalid CLOUD_RUN_TASK_INDEX value"), err)
+			return errors.Join(ErrEnvironmentProcess, errors.New("invalid CLOUD_RUN_TASK_INDEX value"), err)
 		}
-		cfg.TaskIndex = uint(idx)
+		j.TaskIndex = uint(idx)
 	} else {
-		cfg.TaskIndex = loadOpts.defaultTaskIndex
+		j.TaskIndex = loadOpts.defaultTaskIndex
 	}
 
 	if taskAttempt := os.Getenv("CLOUD_RUN_TASK_ATTEMPT"); taskAttempt != "" {
 		attempt, err := strconv.ParseUint(taskAttempt, 10, 32)
 		if err != nil {
-			return nil, errors.Join(ErrEnvironmentProcess, errors.New("invalid CLOUD_RUN_TASK_ATTEMPT value"), err)
+			return errors.Join(ErrEnvironmentProcess, errors.New("invalid CLOUD_RUN_TASK_ATTEMPT value"), err)
 		}
-		cfg.TaskAttempt = uint(attempt)
+		j.TaskAttempt = uint(attempt)
 	} else {
-		cfg.TaskAttempt = loadOpts.defaultTaskAttempt
+		j.TaskAttempt = loadOpts.defaultTaskAttempt
 	}
 
 	if taskCount := os.Getenv("CLOUD_RUN_TASK_COUNT"); taskCount != "" {
 		count, err := strconv.ParseUint(taskCount, 10, 32)
 		if err != nil {
-			return nil, errors.Join(ErrEnvironmentProcess, errors.New("invalid CLOUD_RUN_TASK_COUNT value"), err)
+			return errors.Join(ErrEnvironmentProcess, errors.New("invalid CLOUD_RUN_TASK_COUNT value"), err)
 		}
-		cfg.TaskCount = uint(count)
+		j.TaskCount = uint(count)
 	} else {
-		cfg.TaskCount = loadOpts.defaultTaskCount
+		j.TaskCount = loadOpts.defaultTaskCount
 	}
 
-	return &cfg, nil
+	return nil
 }

@@ -42,21 +42,21 @@ var (
 	// first non-empty value taking precedence. The values returned by the
 	// metadata server will override these when MetadataProjectID is included
 	// in the fields to fetch.
-	EnvProjectID = []string{"CLOUDSDK_CORE_PROJECT", "GOOGLE_CLOUD_PROJECT", "GCP_PROJECT_ID"}
+	EnvProjectID = []string{"CLOUDSDK_CORE_PROJECT", "GOOGLE_CLOUD_PROJECT_ID", "GCP_PROJECT_ID"}
 
 	// EnvProjectNumber is a list of environment variable names that are used
 	// by default to load the project number. Variables are checked in order,
 	// with the first non-empty value taking precedence. The values returned by
 	// the metadata server will override these when MetadataProjectNumber is
 	// included in the fields to fetch.
-	EnvProjectNumber = []string{"GCP_PROJECT_NUMBER"}
+	EnvProjectNumber = []string{"GOOGLE_CLOUD_PROJECT_NUMBER", "GCP_PROJECT_NUMBER"}
 
 	// EnvRegion is a list of environment variable names that are used by
 	// default to load the region. Variables are checked in order, with the
 	// first non-empty value taking precedence. The values returned by the
 	// metadata server will override these when MetadataRegion is included in
 	// the fields to fetch.
-	EnvRegion = []string{"CLOUDSDK_COMPUTE_REGION", "GCP_REGION"}
+	EnvRegion = []string{"CLOUDSDK_COMPUTE_REGION", "GOOGLE_CLOUD_REGION", "GCP_REGION"}
 
 	// EnvInstanceID is a list of environment variable names that are used by
 	// default to load the instance ID. Variables are checked in order, with the
@@ -186,8 +186,10 @@ type Metadata struct {
 	ServiceAccountEmail string
 }
 
-// LoadMetadata retrieves metadata information from the Cloud Run metadata
-// server. The metadataFields parameter controls which fields to fetch from
+// LoadMetadata loads the metadata from the Cloud Run metadata server. It
+// returns a pointer to a new Metadata struct with the loaded values.
+//
+// The metadataFields parameter controls which fields to fetch from
 // the metadata server. If a field is not requested and not set via a default
 // value, it will remain empty in the returned struct.
 //
@@ -196,7 +198,20 @@ type Metadata struct {
 // EnvProjectID, EnvProjectNumber, EnvRegion, EnvInstanceID, and
 // EnvServiceAccountEmail.
 func LoadMetadata(ctx context.Context, metadataFields MetadataField, opts ...MetadataLoadOption) (*Metadata, error) {
-	cfg := Metadata{}
+	m := &Metadata{}
+	return m, m.Reload(ctx, metadataFields, opts...)
+}
+
+// Reload reloads the metadata from the Cloud Run metadata server.
+// The metadataFields parameter controls which fields to fetch from
+// the metadata server. If a field is not requested and not set via a default
+// value, it will remain empty in the returned struct.
+//
+// By default, values not loaded from the metadata server will be loaded from
+// the first non-empty value of the environment variables listed in
+// EnvProjectID, EnvProjectNumber, EnvRegion, EnvInstanceID, and
+// EnvServiceAccountEmail.
+func (m *Metadata) Reload(ctx context.Context, metadataFields MetadataField, opts ...MetadataLoadOption) error {
 	loadOpts := defaultMetadataLoadOptions()
 	for _, opt := range opts {
 		opt(&loadOpts)
@@ -210,11 +225,11 @@ func LoadMetadata(ctx context.Context, metadataFields MetadataField, opts ...Met
 			if err != nil {
 				return fmt.Errorf("failed to fetch project ID: %w", err)
 			}
-			cfg.ProjectID = projectID
+			m.ProjectID = projectID
 			return nil
 		})
 	} else {
-		cfg.ProjectID = loadOpts.defaultProjectID
+		m.ProjectID = loadOpts.defaultProjectID
 	}
 
 	// If both project number and region are requested, both will be fetched
@@ -227,28 +242,28 @@ func LoadMetadata(ctx context.Context, metadataFields MetadataField, opts ...Met
 			}
 			// Region is returned in the format projects/{num}/regions/{name}
 			regionName := res[strings.LastIndexByte(res, '/')+1:]
-			cfg.Region = regionName
+			m.Region = regionName
 
-			if cfg.ProjectNumber == "" && metadataFields&MetadataProjectNumber != 0 {
+			if m.ProjectNumber == "" && metadataFields&MetadataProjectNumber != 0 {
 				const projectNumberPrefixLen = len("projects/")
 				projectNumber := res[projectNumberPrefixLen : strings.IndexByte(res[projectNumberPrefixLen:], '/')+projectNumberPrefixLen]
-				cfg.ProjectNumber = projectNumber
+				m.ProjectNumber = projectNumber
 			}
 			return nil
 		})
 	} else if metadataFields&MetadataProjectNumber != 0 {
-		cfg.Region = loadOpts.defaultRegion
+		m.Region = loadOpts.defaultRegion
 		g.Go(func() error {
 			projectNumber, err := metadata.NumericProjectIDWithContext(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to fetch project number: %w", err)
 			}
-			cfg.ProjectNumber = projectNumber
+			m.ProjectNumber = projectNumber
 			return nil
 		})
 	} else {
-		cfg.Region = loadOpts.defaultRegion
-		cfg.ProjectNumber = loadOpts.defaultProjectNumber
+		m.Region = loadOpts.defaultRegion
+		m.ProjectNumber = loadOpts.defaultProjectNumber
 	}
 
 	if metadataFields&MetadataInstanceID != 0 {
@@ -257,11 +272,11 @@ func LoadMetadata(ctx context.Context, metadataFields MetadataField, opts ...Met
 			if err != nil {
 				return fmt.Errorf("failed to fetch instance ID: %w", err)
 			}
-			cfg.InstanceID = instanceID
+			m.InstanceID = instanceID
 			return nil
 		})
 	} else {
-		cfg.InstanceID = loadOpts.defaultInstanceID
+		m.InstanceID = loadOpts.defaultInstanceID
 	}
 
 	if metadataFields&MetadataServiceAccountEmail != 0 {
@@ -270,16 +285,16 @@ func LoadMetadata(ctx context.Context, metadataFields MetadataField, opts ...Met
 			if err != nil {
 				return fmt.Errorf("failed to fetch service account email: %w", err)
 			}
-			cfg.ServiceAccountEmail = email
+			m.ServiceAccountEmail = email
 			return nil
 		})
 	} else {
-		cfg.ServiceAccountEmail = loadOpts.defaultServiceAccountEmail
+		m.ServiceAccountEmail = loadOpts.defaultServiceAccountEmail
 	}
 
 	if err := g.Wait(); err != nil {
-		return nil, errors.Join(ErrMetadataFetch, err)
+		return errors.Join(ErrMetadataFetch, err)
 	}
 
-	return &cfg, nil
+	return nil
 }

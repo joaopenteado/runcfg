@@ -125,40 +125,47 @@ type Service struct {
 // ErrEnvironmentProcess if environment variable processing fails and/or
 // ErrInvalidPort if the PORT environment variable is set to 0.
 func LoadService(opts ...ServiceLoadOption) (*Service, error) {
+	s := &Service{}
+	return s, s.Reload(opts...)
+}
+
+// Reload reloads the configuration for a Cloud Run service from environment
+// variables. It returns ErrEnvironmentProcess if environment variable
+// processing fails and/or ErrInvalidPort if the PORT environment variable is
+// set to 0.
+func (s *Service) Reload(opts ...ServiceLoadOption) error {
 	loadOpts := defaultServiceLoadOptions()
 	for _, opt := range opts {
 		opt(&loadOpts)
 	}
 
-	cfg := Service{
-		Name:          os.Getenv("K_SERVICE"),
-		Revision:      os.Getenv("K_REVISION"),
-		Configuration: os.Getenv("K_CONFIGURATION"),
-	}
+	s.Name = os.Getenv("K_SERVICE")
+	s.Revision = os.Getenv("K_REVISION")
+	s.Configuration = os.Getenv("K_CONFIGURATION")
 
-	if cfg.Name == "" {
-		cfg.Name = loadOpts.defaultName
+	if s.Name == "" {
+		s.Name = loadOpts.defaultName
 	}
-	if cfg.Revision == "" {
-		cfg.Revision = loadOpts.defaultRevision
+	if s.Revision == "" {
+		s.Revision = loadOpts.defaultRevision
 	}
-	if cfg.Configuration == "" {
-		cfg.Configuration = loadOpts.defaultConfiguration
+	if s.Configuration == "" {
+		s.Configuration = loadOpts.defaultConfiguration
 	}
 
 	if portStr := os.Getenv("PORT"); portStr != "" {
 		port, err := strconv.ParseUint(portStr, 10, 16)
 		if err != nil {
-			return nil, errors.Join(ErrEnvironmentProcess, ErrInvalidPort, err)
+			return errors.Join(ErrEnvironmentProcess, ErrInvalidPort, err)
 		}
-		cfg.Port = uint16(port)
+		s.Port = uint16(port)
 	} else {
-		cfg.Port = loadOpts.defaultPort
+		s.Port = loadOpts.defaultPort
 	}
 
-	if cfg.Port == 0 {
-		return nil, fmt.Errorf("%w: PORT value cannot be 0", ErrInvalidPort)
+	if s.Port == 0 {
+		return fmt.Errorf("%w: PORT value cannot be 0", ErrInvalidPort)
 	}
 
-	return &cfg, nil
+	return nil
 }
