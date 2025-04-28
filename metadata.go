@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"cloud.google.com/go/compute/metadata"
@@ -38,43 +37,130 @@ const (
 )
 
 var (
-	// EnvProjectID is a list of environment variable names that can override
-	// the project ID from the metadata server. Variables are checked in order,
-	// with the first non-empty value taking precedence.
+	// EnvProjectID is a list of environment variable names that are used by
+	// default to load the project ID. Variables are checked in order, with the
+	// first non-empty value taking precedence. The values returned by the
+	// metadata server will override these when MetadataProjectID is included
+	// in the fields to fetch.
 	EnvProjectID = []string{"CLOUDSDK_CORE_PROJECT", "GOOGLE_CLOUD_PROJECT", "GCP_PROJECT_ID"}
 
-	// EnvProjectNumber is a list of environment variable names that can
-	// override the project number from the metadata server. Variables are
-	// checked in order, with the first non-empty value taking precedence.
+	// EnvProjectNumber is a list of environment variable names that are used
+	// by default to load the project number. Variables are checked in order,
+	// with the first non-empty value taking precedence. The values returned by
+	// the metadata server will override these when MetadataProjectNumber is
+	// included in the fields to fetch.
 	EnvProjectNumber = []string{"GCP_PROJECT_NUMBER"}
 
-	// EnvRegion is a list of environment variable names that can override
-	// the region from the metadata server. Variables are checked in order,
-	// with the first non-empty value taking precedence.
+	// EnvRegion is a list of environment variable names that are used by
+	// default to load the region. Variables are checked in order, with the
+	// first non-empty value taking precedence. The values returned by the
+	// metadata server will override these when MetadataRegion is included in
+	// the fields to fetch.
 	EnvRegion = []string{"CLOUDSDK_COMPUTE_REGION", "GCP_REGION"}
 
-	// EnvInstanceID is a list of environment variable names that can override
-	// the instance ID from the metadata server. Variables are checked in order,
-	// with the first non-empty value taking precedence.
+	// EnvInstanceID is a list of environment variable names that are used by
+	// default to load the instance ID. Variables are checked in order, with the
+	// first non-empty value taking precedence. The values returned by the
+	// metadata server will override these when MetadataInstanceID is included
+	// in the fields to fetch.
 	EnvInstanceID = []string{"CLOUD_RUN_INSTANCE_ID"}
 
-	// EnvServiceAccountEmail is a list of environment variable names that can
-	// override the service account email from the metadata server. Variables
-	// are checked in order, with the first non-empty value taking precedence.
+	// EnvServiceAccountEmail is a list of environment variable names that
+	// are used by default to load the service account email. Variables are
+	// checked in order, with the first non-empty value taking precedence. The
+	// values returned by the metadata server will override these when
+	// MetadataServiceAccountEmail is included in the fields to fetch.
 	EnvServiceAccountEmail = []string{"GOOGLE_SERVICE_ACCOUNT_EMAIL"}
 )
 
-// getEnv retrieves environment variable values from a list of environment
-// variable names. It checks each environment variable in order and returns the
-// first non-empty value found. If no value is found, returns an empty string.
-func getEnv(key []string) string {
-	for _, v := range key {
-		if val := os.Getenv(v); val != "" {
-			return val
+type metadataLoadOptions struct {
+	defaultProjectID           string
+	defaultProjectNumber       string
+	defaultRegion              string
+	defaultInstanceID          string
+	defaultServiceAccountEmail string
+}
+
+func defaultMetadataLoadOptions() metadataLoadOptions {
+	return metadataLoadOptions{
+		defaultProjectID:           GetFirstEnv(EnvProjectID...),
+		defaultProjectNumber:       GetFirstEnv(EnvProjectNumber...),
+		defaultRegion:              GetFirstEnv(EnvRegion...),
+		defaultInstanceID:          GetFirstEnv(EnvInstanceID...),
+		defaultServiceAccountEmail: GetFirstEnv(EnvServiceAccountEmail...),
+	}
+}
+
+type MetadataLoadOption func(*metadataLoadOptions)
+
+// WithDefaultProjectID specifies the default project ID to use if the
+// environment variable is not set. If multiple project IDs are provided, the
+// first non-empty project ID will be used.
+func WithDefaultProjectID(projectIDs ...string) MetadataLoadOption {
+	return func(o *metadataLoadOptions) {
+		for _, projectID := range projectIDs {
+			if projectID != "" {
+				o.defaultProjectID = projectID
+				break
+			}
 		}
 	}
+}
 
-	return ""
+// WithDefaultProjectNumber specifies the default project number to use if the
+// environment variable is not set. If multiple project numbers are provided,
+// the first non-empty project number will be used.
+func WithDefaultProjectNumber(projectNumbers ...string) MetadataLoadOption {
+	return func(o *metadataLoadOptions) {
+		for _, projectNumber := range projectNumbers {
+			if projectNumber != "" {
+				o.defaultProjectNumber = projectNumber
+				break
+			}
+		}
+	}
+}
+
+// WithDefaultRegion specifies the default region to use if the environment
+// variable is not set. If multiple regions are provided, the first non-empty
+// region will be used.
+func WithDefaultRegion(regions ...string) MetadataLoadOption {
+	return func(o *metadataLoadOptions) {
+		for _, region := range regions {
+			if region != "" {
+				o.defaultRegion = region
+				break
+			}
+		}
+	}
+}
+
+// WithDefaultInstanceID specifies the default instance ID to use if the
+// environment variable is not set. If multiple instance IDs are provided, the
+// first non-empty instance ID will be used.
+func WithDefaultInstanceID(instanceIDs ...string) MetadataLoadOption {
+	return func(o *metadataLoadOptions) {
+		for _, instanceID := range instanceIDs {
+			if instanceID != "" {
+				o.defaultInstanceID = instanceID
+				break
+			}
+		}
+	}
+}
+
+// WithDefaultServiceAccountEmail specifies the default service account email
+// to use if the environment variable is not set. If multiple service account
+// emails are provided, the first non-empty service account email will be used.
+func WithDefaultServiceAccountEmail(serviceAccountEmails ...string) MetadataLoadOption {
+	return func(o *metadataLoadOptions) {
+		for _, serviceAccountEmail := range serviceAccountEmails {
+			if serviceAccountEmail != "" {
+				o.defaultServiceAccountEmail = serviceAccountEmail
+				break
+			}
+		}
+	}
 }
 
 // Metadata contains information from the instance metadata server.
@@ -101,22 +187,24 @@ type Metadata struct {
 }
 
 // LoadMetadata retrieves metadata information from the Cloud Run metadata
-// server and environment variables. Environment variables take precedence over
-// metadata server values. The metadataFields parameter controls which fields
-// to fetch from the metadata server - if a field is not requested and not set
-// via environment variables, it will remain empty in the returned struct.
-func LoadMetadata(ctx context.Context, metadataFields MetadataField) (*Metadata, error) {
-	cfg := Metadata{
-		ProjectID:           getEnv(EnvProjectID),
-		ProjectNumber:       getEnv(EnvProjectNumber),
-		Region:              getEnv(EnvRegion),
-		InstanceID:          getEnv(EnvInstanceID),
-		ServiceAccountEmail: getEnv(EnvServiceAccountEmail),
+// server. The metadataFields parameter controls which fields to fetch from
+// the metadata server. If a field is not requested and not set via a default
+// value, it will remain empty in the returned struct.
+//
+// By default, values not loaded from the metadata server will be loaded from
+// the first non-empty value of the environment variables listed in
+// EnvProjectID, EnvProjectNumber, EnvRegion, EnvInstanceID, and
+// EnvServiceAccountEmail.
+func LoadMetadata(ctx context.Context, metadataFields MetadataField, opts ...MetadataLoadOption) (*Metadata, error) {
+	cfg := Metadata{}
+	loadOpts := defaultMetadataLoadOptions()
+	for _, opt := range opts {
+		opt(&loadOpts)
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
 
-	if cfg.ProjectID == "" && metadataFields&MetadataProjectID != 0 {
+	if metadataFields&MetadataProjectID != 0 {
 		g.Go(func() error {
 			projectID, err := metadata.ProjectIDWithContext(ctx)
 			if err != nil {
@@ -125,11 +213,13 @@ func LoadMetadata(ctx context.Context, metadataFields MetadataField) (*Metadata,
 			cfg.ProjectID = projectID
 			return nil
 		})
+	} else {
+		cfg.ProjectID = loadOpts.defaultProjectID
 	}
 
 	// If both project number and region are requested, both will be fetched
 	// together from the instance/region metadata endpoint.
-	if cfg.Region == "" && metadataFields&MetadataRegion != 0 {
+	if metadataFields&MetadataRegion != 0 {
 		g.Go(func() error {
 			res, err := metadata.GetWithContext(ctx, "instance/region")
 			if err != nil {
@@ -146,7 +236,8 @@ func LoadMetadata(ctx context.Context, metadataFields MetadataField) (*Metadata,
 			}
 			return nil
 		})
-	} else if cfg.ProjectNumber == "" && metadataFields&MetadataProjectNumber != 0 {
+	} else if metadataFields&MetadataProjectNumber != 0 {
+		cfg.Region = loadOpts.defaultRegion
 		g.Go(func() error {
 			projectNumber, err := metadata.NumericProjectIDWithContext(ctx)
 			if err != nil {
@@ -155,9 +246,12 @@ func LoadMetadata(ctx context.Context, metadataFields MetadataField) (*Metadata,
 			cfg.ProjectNumber = projectNumber
 			return nil
 		})
+	} else {
+		cfg.Region = loadOpts.defaultRegion
+		cfg.ProjectNumber = loadOpts.defaultProjectNumber
 	}
 
-	if cfg.InstanceID == "" && metadataFields&MetadataInstanceID != 0 {
+	if metadataFields&MetadataInstanceID != 0 {
 		g.Go(func() error {
 			instanceID, err := metadata.InstanceIDWithContext(ctx)
 			if err != nil {
@@ -166,9 +260,11 @@ func LoadMetadata(ctx context.Context, metadataFields MetadataField) (*Metadata,
 			cfg.InstanceID = instanceID
 			return nil
 		})
+	} else {
+		cfg.InstanceID = loadOpts.defaultInstanceID
 	}
 
-	if cfg.ServiceAccountEmail == "" && metadataFields&MetadataServiceAccountEmail != 0 {
+	if metadataFields&MetadataServiceAccountEmail != 0 {
 		g.Go(func() error {
 			email, err := metadata.EmailWithContext(ctx, "default")
 			if err != nil {
@@ -177,6 +273,8 @@ func LoadMetadata(ctx context.Context, metadataFields MetadataField) (*Metadata,
 			cfg.ServiceAccountEmail = email
 			return nil
 		})
+	} else {
+		cfg.ServiceAccountEmail = loadOpts.defaultServiceAccountEmail
 	}
 
 	if err := g.Wait(); err != nil {

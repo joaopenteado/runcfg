@@ -29,10 +29,8 @@ go get -u github.com/joaopenteado/runcfg
 import "github.com/joaopenteado/runcfg"
 
 func main() {
-    ctx := context.Background()
-
     // Load service configuration with default options
-    cfg, err := runcfg.LoadService(ctx)
+    cfg, err := runcfg.LoadService()
     if err != nil {
         log.Fatal(err)
     }
@@ -40,15 +38,18 @@ func main() {
     // Access configuration values
     fmt.Printf("Service name: %s\n", cfg.Name)
     fmt.Printf("Port: %d\n", cfg.Port)
-    fmt.Printf("Project ID: %s\n", cfg.ProjectID)
+    fmt.Printf("Revision: %s\n", cfg.Revision)
+    fmt.Printf("Configuration: %s\n", cfg.Configuration)
 }
 ```
 
 ```go
 // With custom options
-cfg, err := runcfg.LoadService(ctx,
-    runcfg.WithMetadata(runcfg.MetadataProjectID | runcfg.MetadataRegion),
+cfg, err := runcfg.LoadService(
     runcfg.WithDefaultPort(3000),
+    runcfg.WithDefaultServiceName("my-service"),
+    runcfg.WithDefaultRevision("v1"),
+    runcfg.WithDefaultConfiguration("prod"),
 )
 ```
 
@@ -58,19 +59,61 @@ cfg, err := runcfg.LoadService(ctx,
 import "github.com/joaopenteado/runcfg"
 
 func main() {
-    ctx := context.Background()
-
     // Load job configuration
-    cfg, err := runcfg.LoadJob(ctx)
+    cfg, err := runcfg.LoadJob()
     if err != nil {
         log.Fatal(err)
     }
 
     // Access configuration values
     fmt.Printf("Job name: %s\n", cfg.Name)
+    fmt.Printf("Execution: %s\n", cfg.Execution)
     fmt.Printf("Task index: %d\n", cfg.TaskIndex)
-    fmt.Printf("Project ID: %s\n", cfg.ProjectID)
+    fmt.Printf("Task attempt: %d\n", cfg.TaskAttempt)
+    fmt.Printf("Task count: %d\n", cfg.TaskCount)
 }
+```
+
+```go
+// With custom options
+cfg, err := runcfg.LoadJob(
+    runcfg.WithDefaultJobName("my-job"),
+    runcfg.WithDefaultExecution("exec-1"),
+    runcfg.WithDefaultTaskIndex(0),
+    runcfg.WithDefaultTaskAttempt(0),
+    runcfg.WithDefaultTaskCount(1),
+)
+```
+
+### Metadata Configuration
+
+```go
+import "github.com/joaopenteado/runcfg"
+
+func main() {
+    ctx := context.Background()
+
+    // Load metadata with specific fields
+    cfg, err := runcfg.LoadMetadata(ctx, runcfg.MetadataProjectID | runcfg.MetadataRegion)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Access metadata values
+    fmt.Printf("Project ID: %s\n", cfg.ProjectID)
+    fmt.Printf("Region: %s\n", cfg.Region)
+}
+```
+
+```go
+// With custom options
+cfg, err := runcfg.LoadMetadata(ctx, runcfg.MetadataAll,
+    runcfg.WithDefaultProjectID("my-project"),
+    runcfg.WithDefaultRegion("us-central1"),
+    runcfg.WithDefaultProjectNumber("123456789"),
+    runcfg.WithDefaultInstanceID("instance-1"),
+    runcfg.WithDefaultServiceAccountEmail("service-account@project.iam.gserviceaccount.com"),
+)
 ```
 
 ## Configuration Options
@@ -112,15 +155,23 @@ found. If no non-empty environment variables are found and the loader is
 configured to fetch the corresponding metadata field, the value will be fetched
 from the metadata server.
 
-
 ## Error Handling
 
-The package defines the following types, from which all the errors it returns
-are based on.
+The package defines the following error types:
 
 ```go
 var (
+    // ErrEnvironmentProcess indicates a failure while processing configuration
+    // from environment variables.
     ErrEnvironmentProcess = errors.New("failed to process configuration from environment variables")
+
+    // ErrInvalidPort indicates an invalid port value was specified.
+    // The PORT environment variable must be a valid port number, ranging from
+    // 1 to 65535.
+    ErrInvalidPort = errors.New("invalid PORT value")
+
+    // ErrMetadataFetch indicates a failure while fetching metadata from the
+    // metadata server.
     ErrMetadataFetch = errors.New("failed to fetch metadata from server")
 )
 ```
