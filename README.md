@@ -15,6 +15,7 @@ and metadata server information in Cloud Run environments.
 - Concurrent metadata fetching for better performance
 - Configurable metadata field loading
 - Reload configuration at any time
+- Integration with [sethvargo/go-envconfig](https://github.com/sethvargo/go-envconfig)
 
 ## Installation
 
@@ -66,7 +67,7 @@ cfg, err := runcfg.LoadService(
 import "github.com/joaopenteado/runcfg"
 
 func main() {
-    // Load job configuration
+    // Load job configuration with default options
     cfg, err := runcfg.LoadJob()
     if err != nil {
         log.Fatal(err)
