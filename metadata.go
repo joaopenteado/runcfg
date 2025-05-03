@@ -288,35 +288,57 @@ func (m *Metadata) Reload(ctx context.Context, metadataFields MetadataField) err
 // return errors derived from [ErrMetadataFetch] if the metadata server is
 // unavailable.
 //
-// The behavior of this function is equivalent to initializing a Metadata with
-// the default values and then calling [Metadata.Reload]. However, values already
-// set in the Metadata struct prior to calling this function are not overridden
-// by the defaults, only by the reloaded values from the environment.
+// The behavior of this function is equivalent to initializing a Metadata struct
+// with the default values and then calling [Metadata.Reload] with values unset
+// from the environment. Values already set in the Metadata struct prior to
+// calling this function are not overridden by the defaults nor fetched from
+// the metadata server.
 //
 // [envconfig.DecoderCtx]: https://pkg.go.dev/github.com/sethvargo/go-envconfig#DecoderCtx
 // [envconfig.Process]: https://pkg.go.dev/github.com/sethvargo/go-envconfig#Process
 func (m *Metadata) EnvDecode(ctx context.Context, val string) error {
+	metadataFields := MetadataNone
 	defaults := defaultMetadata()
 
 	if m.ProjectID == "" {
-		m.ProjectID = defaults.ProjectID
+		if defaults.ProjectID != "" {
+			m.ProjectID = defaults.ProjectID
+		} else {
+			metadataFields |= MetadataProjectID
+		}
 	}
 
 	if m.ProjectNumber == "" {
-		m.ProjectNumber = defaults.ProjectNumber
+		if defaults.ProjectNumber != "" {
+			m.ProjectNumber = defaults.ProjectNumber
+		} else {
+			metadataFields |= MetadataProjectNumber
+		}
 	}
 
 	if m.Region == "" {
-		m.Region = defaults.Region
+		if defaults.Region != "" {
+			m.Region = defaults.Region
+		} else {
+			metadataFields |= MetadataRegion
+		}
 	}
 
 	if m.InstanceID == "" {
-		m.InstanceID = defaults.InstanceID
+		if defaults.InstanceID != "" {
+			m.InstanceID = defaults.InstanceID
+		} else {
+			metadataFields |= MetadataInstanceID
+		}
 	}
 
 	if m.ServiceAccountEmail == "" {
-		m.ServiceAccountEmail = defaults.ServiceAccountEmail
+		if defaults.ServiceAccountEmail != "" {
+			m.ServiceAccountEmail = defaults.ServiceAccountEmail
+		} else {
+			metadataFields |= MetadataServiceAccountEmail
+		}
 	}
 
-	return m.Reload(ctx, MetadataAll)
+	return m.Reload(ctx, metadataFields)
 }
