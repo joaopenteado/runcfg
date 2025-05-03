@@ -11,18 +11,21 @@ import (
 )
 
 func init() {
-	// This init function modifies global zerolog settings to align with Google Cloud Logging conventions.
-	// These changes affect all logging behavior globally in the application, which may have side effects
-	// on downstream logging if other parts of the application or libraries also use zerolog.
-	// 
+	// This init function modifies global zerolog settings to align with Google
+	// Cloud Logging conventions.
+	// These changes affect all logging behavior globally in the application,
+	// which may have side effects on downstream logging if other parts of the
+	// application or libraries also use zerolog.
+	//
 	// Specifically:
 	// - TimeFieldFormat is set to RFC3339Nano for precise timestamp formatting.
-	// - LevelFieldName is set to "severity" to match Google Cloud Logging's expected field name.
-	// - LevelFieldMarshalFunc is customized to map zerolog levels to Google Cloud Logging severity levels.
+	// - LevelFieldName is set to "severity" to match Google Cloud Logging's
+	//   expected field name.
+	// - LevelFieldMarshalFunc is customized to map zerolog levels to Google
+	//   Cloud Logging severity levels.
 	//
 	// For more details, refer to:
 	// https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry
-	// https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#LogSeverity
 
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 	zerolog.LevelFieldName = "severity"
