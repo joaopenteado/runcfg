@@ -14,3 +14,17 @@ updates:
       major:
         update-types:
           - major
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      patch:
+        update-types:
+          - patch
+      minor:
+        update-types:
+          - minor
+      major:
+        update-types:
+          - major
