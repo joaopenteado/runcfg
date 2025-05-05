@@ -4,6 +4,7 @@ updates:
     directories:
       - "/"
       - "/zerologcfg"
+      - "/otelcfg"
     schedule:
       interval: weekly
     groups:
