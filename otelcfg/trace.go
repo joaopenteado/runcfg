@@ -107,7 +107,9 @@ func SetupTracerProvider(ctx context.Context, opts ...TracerProviderOption) (shu
 }
 
 // CloudTraceOLTPExporter creates a new span exporter for the Cloud Trace
-// Telemetry OpenTelemetry Protocol (OTLP) endpoint.
+// Telemetry OpenTelemetry Protocol (OTLP) endpoint. Beware that you must
+// configure the `gcp.project_id` resource attribute for the resource in order
+// to assign a project to the traces.
 // https://cloud.google.com/trace/docs/migrate-to-otlp-endpoints#telemetry_replace-go
 func CloudTraceOLTPExporter(ctx context.Context) (trace.SpanExporter, error) {
 	creds, err := oauth.NewApplicationDefault(ctx, "https://www.googleapis.com/auth/trace.append")
