@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"cloud.google.com/go/profiler"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 	"github.com/joaopenteado/runcfg"
@@ -94,7 +95,7 @@ func main() {
 	// Load configuration
 	cfg := &config{}
 	if err := envconfig.Process(ctx, cfg); err != nil {
-		returnErr = errors.Join(ErrInitialization, err, returnErr)
+		returnErr = errors.Join(ErrInitialization, err)
 		return
 	}
 
@@ -104,15 +105,29 @@ func main() {
 	// Initialize tracing
 	otelShutdown, err := setupOpenTelemetry(ctx, cfg)
 	if err != nil {
-		returnErr = errors.Join(ErrInitialization, err, returnErr)
+		returnErr = errors.Join(ErrInitialization, err)
 		return
 	}
 	defer func() {
 		if err := otelShutdown(ctx); err != nil {
-			returnErr = errors.Join(ErrShutdown, err, returnErr)
+			returnErr = errors.Join(ErrShutdown, err)
 		}
 	}()
 
+	// Setup Cloud Profier
+	profCfg := profiler.Config{
+		Service:        cfg.Name,
+		ServiceVersion: cfg.Revision,
+		ProjectID:      cfg.ProjectID,
+		Instance:       cfg.InstanceID,
+		Zone:           cfg.Region,
+	}
+	if err := profiler.Start(profCfg); err != nil {
+		returnErr = errors.Join(ErrInitialization, err)
+		return
+	}
+
+	// Setup HTTP server
 	r := chi.NewRouter()
 	r.Use(
 		middleware.Recoverer,
@@ -129,7 +144,7 @@ func main() {
 
 	go func() {
 		if srvErr := srv.ListenAndServe(); srvErr != nil && srvErr != http.ErrServerClosed {
-			returnErr = errors.Join(ErrInitialization, srvErr, returnErr)
+			returnErr = errors.Join(ErrInitialization, srvErr)
 			shutdown() // initiate a graceful shutdown
 		}
 	}()
@@ -153,7 +168,7 @@ func main() {
 
 	if gErr := g.Wait(); gErr != nil {
 		// Ensures a non-sucessful exit code is returned
-		returnErr = errors.Join(ErrShutdown, gErr, returnErr)
+		returnErr = errors.Join(ErrShutdown, gErr)
 	}
 }
 
