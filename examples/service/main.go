@@ -94,7 +94,7 @@ func main() {
 	// Load configuration
 	cfg := &config{}
 	if err := envconfig.Process(ctx, cfg); err != nil {
-		returnErr = errors.Join(returnErr, ErrInitialization, err)
+		returnErr = errors.Join(ErrInitialization, err, returnErr)
 		return
 	}
 
@@ -104,12 +104,12 @@ func main() {
 	// Initialize tracing
 	otelShutdown, err := setupOpenTelemetry(ctx, cfg)
 	if err != nil {
-		returnErr = errors.Join(returnErr, ErrInitialization, err)
+		returnErr = errors.Join(ErrInitialization, err, returnErr)
 		return
 	}
 	defer func() {
 		if err := otelShutdown(ctx); err != nil {
-			returnErr = errors.Join(returnErr, ErrShutdown, err)
+			returnErr = errors.Join(ErrShutdown, err, returnErr)
 		}
 	}()
 
@@ -129,7 +129,7 @@ func main() {
 
 	go func() {
 		if srvErr := srv.ListenAndServe(); srvErr != nil && srvErr != http.ErrServerClosed {
-			returnErr = errors.Join(returnErr, ErrInitialization, srvErr)
+			returnErr = errors.Join(ErrInitialization, srvErr, returnErr)
 			shutdown() // initiate a graceful shutdown
 		}
 	}()
@@ -152,7 +152,8 @@ func main() {
 	})
 
 	if gErr := g.Wait(); gErr != nil {
-		returnErr = errors.Join(returnErr, ErrShutdown)
+		// Ensures a non-sucessful exit code is returned
+		returnErr = errors.Join(ErrShutdown, gErr, returnErr)
 	}
 }
 
