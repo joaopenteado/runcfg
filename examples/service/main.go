@@ -43,6 +43,21 @@ type config struct {
 }
 
 func main() {
+	// Logging and error handling
+	// Ensure a proper error exit code is returned in the case of an error
+	var returnErr error
+	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
+	defer func() {
+		if returnErr != nil {
+			if errors.Is(returnErr, ErrInitialization) || errors.Is(returnErr, ErrShutdown) {
+				logger.Fatal().Err(errors.Unwrap(returnErr)).Msg(returnErr.Error())
+				return
+			}
+
+			logger.Fatal().Err(returnErr).Msg("unknown return error")
+		}
+	}()
+
 	// Base context and graceful shutdown context
 	// The cancel function should not be used, its sole purpose is to signal
 	// that the main function is done.
@@ -75,21 +90,6 @@ func main() {
 		// Wait for either the main function to finish or the timeout
 		<-timeoutCtx.Done()
 		cancel() // Forcibly cancel the base context if necessary
-	}()
-
-	// Logging and error handling
-	// Ensure a proper error exit code is returned in the case of an error
-	var returnErr error
-	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
-	defer func() {
-		if returnErr != nil {
-			if errors.Is(returnErr, ErrInitialization) || errors.Is(returnErr, ErrShutdown) {
-				logger.Fatal().Err(errors.Unwrap(returnErr)).Msg(returnErr.Error())
-				return
-			}
-
-			logger.Fatal().Err(returnErr).Msg("unknown return error")
-		}
 	}()
 
 	// Load configuration
