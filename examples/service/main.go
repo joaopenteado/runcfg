@@ -172,8 +172,6 @@ func main() {
 	}
 }
 
-// profiling
-
 func setupOpenTelemetry(ctx context.Context, cfg *config) (func(context.Context) error, error) {
 	svc := otelcfg.NewServiceResource(&cfg.Metadata, &cfg.Service, otelcfg.WithAttributes(
 		// Required to assign a project to the traces in Cloud Trace
