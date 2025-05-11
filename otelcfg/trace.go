@@ -2,8 +2,6 @@ package otelcfg
 
 import (
 	"context"
-	"errors"
-	"slices"
 
 	"go.opentelemetry.io/contrib/exporters/autoexport"
 	"go.opentelemetry.io/contrib/propagators/autoprop"
@@ -47,26 +45,10 @@ func WithTracerProviderOptions(opts ...trace.TracerProviderOption) TracerProvide
 	})
 }
 
-func SetupTracerProvider(ctx context.Context, opts ...TracerProviderOption) (shutdown func(context.Context) error, err error) {
+func SetupTracerProvider(ctx context.Context, opts ...TracerProviderOption) (*trace.TracerProvider, error) {
 	var cfg traceProviderConfig
 	for _, opt := range opts {
 		opt.apply(&cfg)
-	}
-
-	// This code is largely taken from Cloud Trace's documentation:
-	// https://cloud.google.com/trace/docs/setup/go-ot#config-otel
-
-	var shutdownFuncs []func(context.Context) error
-
-	// shutdown combines shutdown functions from multiple OpenTelemetry
-	// components into a single function.
-	shutdown = func(ctx context.Context) error {
-		var err error
-		for _, fn := range slices.Backward(shutdownFuncs) {
-			err = errors.Join(err, fn(ctx))
-		}
-		shutdownFuncs = nil
-		return err
 	}
 
 	if cfg.textMapPropagator == nil {
@@ -98,12 +80,11 @@ func SetupTracerProvider(ctx context.Context, opts ...TracerProviderOption) (shu
 	tpOpts = append(tpOpts, cfg.tracerProviderOpts...)
 
 	tp := trace.NewTracerProvider(tpOpts...)
-	shutdownFuncs = append(shutdownFuncs, tp.Shutdown)
 
 	// Set the tracer provider as the global tracer provider.
 	otel.SetTracerProvider(tp)
 
-	return shutdown, nil
+	return tp, nil
 }
 
 // CloudTraceOLTPExporter creates a new span exporter for the Cloud Trace
