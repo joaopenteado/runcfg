@@ -61,7 +61,7 @@ func Hook(projectID string) zerolog.Hook {
 	return &cloudLoggingHook{ProjectID: projectID}
 }
 
-func (h cloudLoggingHook) Run(e *zerolog.Event, level zerolog.Level, msg string) {
+func (h *cloudLoggingHook) Run(e *zerolog.Event, level zerolog.Level, msg string) {
 	// https://cloud.google.com/logging/docs/structured-logging
 
 	// CallerSkipFrameCount is the number of stack frames to skip to find the
