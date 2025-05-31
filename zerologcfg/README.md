@@ -32,27 +32,65 @@ go get github.com/joaopenteado/runcfg/zerologcfg
 package main
 
 import (
-    "context"
-    "os"
-    "github.com/rs/zerolog"
-    "github.com/joaopenteado/runcfg/zerologcfg"
+	"context"
+	"net/http"
+	"os"
+
+	"github.com/joaopenteado/runcfg/zerologcfg"
+	"github.com/rs/zerolog"
 )
 
 func main() {
-    // Create a new logger with Cloud Run configuration
-    logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
+	// Create a new logger with Cloud Run configuration
+	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
-    // Add Cloud Logging hook with your project ID
-    logger = logger.Hook(zerologcfg.Hook("your-project-id"))
+	// Add Cloud Logging hook with your project ID
+	logger = logger.Hook(zerologcfg.Hook("your-project-id"))
 
-    // Use the logger
-    logger.Info().Msg("Hello from Cloud Run!")
+	// Use the logger
+	logger.Info().Msg("Hello from Cloud Run!")
 
-    // Log with context containing trace information
-    ctx := context.Background() // Your context with trace info
-    logger.Info().Ctx(ctx).Msg("Log with trace information")
+	// Log with context containing trace information
+	ctx := context.Background() // Your context with trace info
+	logger.Info().Ctx(ctx).Msg("Log with trace information")
+
+	// Example HTTP handler using the Handler middleware
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		log := zerolog.Ctx(r.Context())
+		log.Info().Msg("Handling request")
+		w.Write([]byte("Hello!"))
+	})
+
+	// Create a new HTTP server with the logger middleware
+	// Ensure the Handler middleware is added after any tracing middleware
+	server := &http.Server{
+		Addr:    ":8080",
+		Handler: zerologcfg.Handler(logger)(mux),
+	}
+
+	logger.Info().Msgf("Server listening on %s", server.Addr)
+	if err := server.ListenAndServe(); err != nil {
+		logger.Fatal().Err(err).Msg("Server failed to start")
+	}
 }
 ```
+
+## HTTP Middleware
+
+The package provides an HTTP middleware `Handler` that injects the `zerolog.Logger`
+into the request's context. This is particularly useful for ensuring that log
+messages within HTTP handlers automatically include trace information if available
+in the request context.
+
+```go
+// logger is your configured zerolog.Logger instance
+// myRouter is your http.Handler (e.g., a chi router or http.ServeMux)
+http.ListenAndServe(":8080", zerologcfg.Handler(logger)(myRouter))
+```
+
+It's important to install this middleware *after* any middleware that might
+add tracing information to the request context (e.g., OpenTelemetry middleware).
 
 ## Log Levels
 
