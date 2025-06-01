@@ -75,8 +75,8 @@ func SetupTracerProvider(ctx context.Context, opts ...TracerProviderOption) (*tr
 		// exporter. No need to explicitly call the shutdown function.
 	}
 
-	tpOpts := make([]trace.TracerProviderOption, 0, 1+len(cfg.tracerProviderOpts))
-	tpOpts = append(tpOpts, trace.WithBatcher(cfg.exporter))
+	tpOpts := make([]trace.TracerProviderOption, 1, 1+len(cfg.tracerProviderOpts))
+	tpOpts[0] = trace.WithBatcher(cfg.exporter)
 	tpOpts = append(tpOpts, cfg.tracerProviderOpts...)
 
 	tp := trace.NewTracerProvider(tpOpts...)
