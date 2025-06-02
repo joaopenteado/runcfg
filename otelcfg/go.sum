@@ -48,8 +48,8 @@ github.com/googleapis/gax-go/v2 v2.14.2 h1:eBLnkZ9635krYIPD+ag1USrOAI0Nr0QYF3+/3
 github.com/googleapis/gax-go/v2 v2.14.2/go.mod h1:ON64QhlJkhVtSqp4v1uaK92VyZ2gmvDQsweuyLV+8+w=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3 h1:5ZPtiqj0JL5oKWmcsq4VMaAW5ukBEgSGXEN89zeH1Jo=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3/go.mod h1:ndYquD05frm2vACXE1nsccT4oJzjhw2arTS2cpUD1PI=
-github.com/joaopenteado/runcfg v0.4.0 h1:/kWy7QHnOUtyCNu59qhrDnQdZAIOBagdWFkfcQ3j4oo=
-github.com/joaopenteado/runcfg v0.4.0/go.mod h1:bGItPAN6g7h2GBnhuCUgvyn14tU8AtXHRQuNfPX8e1M=
+github.com/joaopenteado/runcfg v0.4.1 h1:eNZ2NLTloBHyaE6ekV+hjVAvYxccEnXdW3zUa+Dxe5E=
+github.com/joaopenteado/runcfg v0.4.1/go.mod h1:tWvQWCcCPwQfJRvr4SI9ZWauIrT1XvAReoODkIcGZQ0=
 github.com/klauspost/compress v1.18.0 h1:c/Cqfb0r+Yi+JtIEq73FWXVkRonBlf0CRNYc8Zttxdo=
 github.com/klauspost/compress v1.18.0/go.mod h1:2Pp+KzxcywXVXMr50+X0Q/Lsb43OQHYWRCY2AiWywWQ=
 github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
