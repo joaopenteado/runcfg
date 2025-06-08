@@ -18,6 +18,7 @@ format
 - Automatically adds source location information (file, line, function)
 - Integrates with OpenTelemetry tracing (trace ID, span ID, and sampling status)
 - Formats logs according to Cloud Logging's structured logging requirements
+- Supports setting log level via `LOG_LEVEL` environment variable
 - Supports Go 1.24.1 and above
 
 ## Installation
@@ -104,6 +105,21 @@ The package maps zerolog levels to Cloud Logging severity levels:
 - FATAL → CRITICAL
 - PANIC → ALERT
 - NoLevel → DEFAULT
+
+### Setting Log Level via Environment Variable
+
+You can set the global log level using the `LOG_LEVEL` environment variable.
+The package will automatically configure zerolog with the specified level during
+initialization.
+
+Example:
+```bash
+export LOG_LEVEL=DEBUG
+go run main.go
+```
+
+If the `LOG_LEVEL` environment variable is not set or contains an invalid value,
+the package will use zerolog's default log level.
 
 ## Structured Logging
 
