@@ -2,6 +2,7 @@ package zerologcfg
 
 import (
 	"net/http"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -50,6 +51,12 @@ func init() {
 			return "DEFAULT"
 		default:
 			return "DEFAULT"
+		}
+	}
+
+	if lvl, ok := os.LookupEnv("LOG_LEVEL"); ok {
+		if lvl, err := zerolog.ParseLevel(lvl); err == nil {
+			zerolog.SetGlobalLevel(lvl)
 		}
 	}
 }
