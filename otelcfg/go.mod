@@ -4,7 +4,7 @@ go 1.24.1
 
 require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.52.0
-	github.com/joaopenteado/runcfg v0.4.0
+	github.com/joaopenteado/runcfg v0.4.1
 	go.opentelemetry.io/contrib/exporters/autoexport v0.61.0
 	go.opentelemetry.io/contrib/propagators/autoprop v0.61.0
 	go.opentelemetry.io/otel v1.36.0
