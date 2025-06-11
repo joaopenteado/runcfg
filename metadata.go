@@ -179,7 +179,10 @@ func WithDefaultServiceAccountEmail(serviceAccountEmails ...string) MetadataLoad
 }
 
 // LoadMetadata loads the metadata from the Cloud Run metadata server. It
-// returns a pointer to a new Metadata struct with the loaded values.
+// returns a pointer to a new Metadata struct with the loaded values. Data is
+// only loaded from the metadata server if the metadataFields parameter is set
+// for each specific field and the field is not already set by a default option
+// or environment variable.
 //
 // The metadataFields parameter controls which fields to fetch from
 // the metadata server. If a field is not requested and not set via a default
@@ -191,11 +194,45 @@ func WithDefaultServiceAccountEmail(serviceAccountEmails ...string) MetadataLoad
 // EnvServiceAccountEmail.
 func LoadMetadata(ctx context.Context, metadataFields MetadataField, opts ...MetadataLoadOption) (*Metadata, error) {
 	// Default values
-	m := defaultMetadata()
+	m := &Metadata{}
 
-	// Apply options
+	// Apply default options
 	for _, opt := range opts {
 		opt(m)
+	}
+
+	// Apply env options
+	if projectID := GetFirstEnv(EnvProjectID...); projectID != "" {
+		m.ProjectID = projectID
+	}
+	if projectNumber := GetFirstEnv(EnvProjectNumber...); projectNumber != "" {
+		m.ProjectNumber = projectNumber
+	}
+	if region := GetFirstEnv(EnvRegion...); region != "" {
+		m.Region = region
+	}
+	if instanceID := GetFirstEnv(EnvInstanceID...); instanceID != "" {
+		m.InstanceID = instanceID
+	}
+	if serviceAccountEmail := GetFirstEnv(EnvServiceAccountEmail...); serviceAccountEmail != "" {
+		m.ServiceAccountEmail = serviceAccountEmail
+	}
+
+	// No need to fetch data that is already set by default options or envs
+	if m.ProjectID != "" {
+		metadataFields &= ^MetadataProjectID
+	}
+	if m.ProjectNumber != "" {
+		metadataFields &= ^MetadataProjectNumber
+	}
+	if m.Region != "" {
+		metadataFields &= ^MetadataRegion
+	}
+	if m.InstanceID != "" {
+		metadataFields &= ^MetadataInstanceID
+	}
+	if m.ServiceAccountEmail != "" {
+		metadataFields &= ^MetadataServiceAccountEmail
 	}
 
 	// Reload metadata from the server
@@ -211,6 +248,10 @@ func LoadMetadata(ctx context.Context, metadataFields MetadataField, opts ...Met
 // the metadata server. Fields not requested will not be loaded and won't
 // overwrite values already set in the Metadata struct.
 func (m *Metadata) Reload(ctx context.Context, metadataFields MetadataField) error {
+	if metadataFields == MetadataNone {
+		return nil
+	}
+
 	g, ctx := errgroup.WithContext(ctx)
 
 	if metadataFields&MetadataProjectID != 0 {
